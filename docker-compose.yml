@@ -1,0 +1,80 @@
+# StudyPilot AI — Full-stack Docker Compose
+# Run: docker compose up --build
+# Requires Ollama to be running on the host (see README for options)
+
+version: "3.9"
+
+services:
+  # ── PostgreSQL ──────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: studypilot_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: studypilot
+      POSTGRES_PASSWORD: studypilot
+      POSTGRES_DB: studypilot
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U studypilot -d studypilot"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - studypilot_net
+
+  # ── Backend (FastAPI) ────────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: studypilot_backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://studypilot:studypilot@postgres:5432/studypilot
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-change-me-in-production}
+      JWT_REFRESH_SECRET_KEY: ${JWT_REFRESH_SECRET_KEY:-change-me-too-in-production}
+      # Ollama: either "host.docker.internal:11434" (Docker Desktop on Mac/Windows)
+      # or your host IP (Linux). Override via .env if needed.
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      UPLOAD_DIR: /app/storage/uploads
+      VECTOR_STORE_DIR: /app/storage/vector_store
+      EXPORT_DIR: /app/storage/exports
+    volumes:
+      # Persist uploads, vector indexes, and exports across container restarts
+      - backend_storage:/app/storage
+    ports:
+      - "8000:8000"
+    networks:
+      - studypilot_net
+    # Extra host so the container can reach Ollama running on the Docker host (Linux)
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  # ── Frontend (Nginx serving Vite build) ─────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: studypilot_frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "3000:80"
+    networks:
+      - studypilot_net
+
+volumes:
+  postgres_data:
+    driver: local
+  backend_storage:
+    driver: local
+
+networks:
+  studypilot_net:
+    driver: bridge
