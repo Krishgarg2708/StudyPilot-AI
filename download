@@ -1,0 +1,41 @@
+# --- Secrets ---
+.env
+*.env
+!.env.example
+
+# --- Python / backend ---
+backend/__pycache__/
+**/__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.coverage
+htmlcov/
+*.db
+*.sqlite3
+
+# --- Node / frontend ---
+frontend/node_modules/
+node_modules/
+frontend/dist/
+dist/
+*.log
+npm-debug.log*
+
+# --- Runtime data (populated by the app, not source) ---
+backend/storage/uploads/*
+!backend/storage/uploads/.gitkeep
+backend/storage/vector_store/*
+!backend/storage/vector_store/.gitkeep
+backend/storage/exports/*
+!backend/storage/exports/.gitkeep
+backend/storage/voices/*
+!backend/storage/voices/.gitkeep
+
+# --- Editors / OS ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
